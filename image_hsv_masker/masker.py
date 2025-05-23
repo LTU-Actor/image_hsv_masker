@@ -16,28 +16,43 @@ class Masker(Node):
     def __init__(self):
         super().__init__("masker")
         
-        # declare HSV mask params
-        self.declare_parameter("hue_l", 0)
-        self.declare_parameter("hue_h", 30)
-        self.declare_parameter("sat_l", 0)
-        self.declare_parameter("sat_h", 255)
-        self.declare_parameter("val_l", 150)
-        self.declare_parameter("val_h", 255)
-        self.params_dict["hue_l"] = int(self.get_parameter("hue_l").value)
-        self.params_dict["hue_h"] = int(self.get_parameter("hue_h").value)
-        self.params_dict["sat_l"] = int(self.get_parameter("sat_l").value)
-        self.params_dict["sat_h"] = int(self.get_parameter("sat_h").value)
-        self.params_dict["val_l"] = int(self.get_parameter("val_l").value)
-        self.params_dict["val_h"] = int(self.get_parameter("val_h").value)
+        self.declare_parameters(namespace="", parameters=[
+            ("white_mask.hue_l",    0),
+            ("white_mask.hue_h",    0),
+            ("white_mask.sat_l",    0),
+            ("white_mask.sat_h",    0),
+            ("white_mask.val_l",    0),
+            ("white_mask.val_h",    0),
+            ("yellow_mask.hue_l",   0),
+            ("yellow_mask.hue_h",   0),
+            ("yellow_mask.sat_l",   0),
+            ("yellow_mask.sat_h",   0),
+            ("yellow_mask.val_l",   0),
+            ("yellow_mask.val_h",   0),
+            ("image_topic",         "image_raw"),
+        ])
         
-        self.declare_parameter("image_topic", "image_raw")
+        self.params_dict["white_mask.hue_l"] = int(self.get_parameter("white_mask.hue_l").value)
+        self.params_dict["white_mask.hue_h"] = int(self.get_parameter("white_mask.hue_h").value)
+        self.params_dict["white_mask.sat_l"] = int(self.get_parameter("white_mask.sat_l").value)
+        self.params_dict["white_mask.sat_h"] = int(self.get_parameter("white_mask.sat_h").value)
+        self.params_dict["white_mask.val_l"] = int(self.get_parameter("white_mask.val_l").value)
+        self.params_dict["white_mask.val_h"] = int(self.get_parameter("white_mask.val_h").value)
+        self.params_dict["yellow_mask.hue_l"] = int(self.get_parameter("yellow_mask.hue_l").value)
+        self.params_dict["yellow_mask.hue_h"] = int(self.get_parameter("yellow_mask.hue_h").value)
+        self.params_dict["yellow_mask.sat_l"] = int(self.get_parameter("yellow_mask.sat_l").value)
+        self.params_dict["yellow_mask.sat_h"] = int(self.get_parameter("yellow_mask.sat_h").value)
+        self.params_dict["yellow_mask.val_l"] = int(self.get_parameter("yellow_mask.val_l").value)
+        self.params_dict["yellow_mask.val_h"] = int(self.get_parameter("yellow_mask.val_h").value)
         
         # subscriptions
         self.create_subscription(Image, self.get_parameter("image_topic").value, self.image_cb, 1)
         self.add_on_set_parameters_callback(self.params_cb)
         
         # publishers
-        self.blob_debug_pub = self.create_publisher(Image, "mask", 1)
+        self.white_mask_pub = self.create_publisher(Image, "white_mask", 1)
+        self.yellow_mask_pub = self.create_publisher(Image, "yellow_mask", 1)
+        self.mask_pub = self.create_publisher(Image, "mask", 1)
         
         self.bridge = CvBridge()
         
@@ -48,14 +63,23 @@ class Masker(Node):
         return SetParametersResult(successful=True)
     
     def image_cb(self, ros_image):
+        white_tcolLower = (self.params_dict["white_mask.hue_l"], self.params_dict["white_mask.sat_l"], self.params_dict["white_mask.val_l"])
+        white_tcolUpper = (self.params_dict["white_mask.hue_h"], self.params_dict["white_mask.sat_h"], self.params_dict["white_mask.val_h"])
+        yellow_tcolLower = (self.params_dict["yellow_mask.hue_l"], self.params_dict["yellow_mask.sat_l"], self.params_dict["yellow_mask.val_l"])
+        yellow_tcolUpper = (self.params_dict["yellow_mask.hue_h"], self.params_dict["yellow_mask.sat_h"], self.params_dict["yellow_mask.val_h"])
+        
         im = self.bridge.imgmsg_to_cv2(ros_image, "bgr8")
         im = cv.medianBlur(im, 5)
         hsv_image = cv.cvtColor(im, cv.COLOR_BGR2HSV)
-        tcolLower = (self.params_dict["hue_l"], self.params_dict["sat_l"], self.params_dict["val_l"])
-        tcolUpper = (self.params_dict["hue_h"], self.params_dict["sat_h"], self.params_dict["val_h"])
-        mask = cv.inRange(hsv_image, tcolLower, tcolUpper)
+        white_mask = cv.inRange(hsv_image, white_tcolLower, white_tcolUpper)
+        yellow_mask = cv.inRange(hsv_image, yellow_tcolLower, yellow_tcolUpper)
+        yw_mask = cv.bitwise_and(white_mask, yellow_mask)
         
-        self.blob_debug_pub.publish(self.bridge.cv2_to_imgmsg(mask, "mono8"))
+        self.white_mask_pub.publish(self.bridge.cv2_to_imgmsg(white_mask, "mono8"))
+        self.yellow_mask_pub.publish(self.bridge.cv2_to_imgmsg(yellow_mask, "mono8"))
+        self.mask_pub.publish(self.bridge.cv2_to_imgmsg(yw_mask, "mono8"))
+        
+        # self.blob_debug_pub.publish(self.bridge.cv2_to_imgmsg(mask, "mono8"))
         
         
 def main(args=None):
