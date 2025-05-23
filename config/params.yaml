@@ -1,0 +1,10 @@
+masker:
+  ros__parameters:
+    hue_h: 30
+    hue_l: 0
+    sat_h: 255
+    sat_l: 0
+    val_h: 255
+    val_l: 150
+
+    image_topic: "/routecam"
