@@ -16,4 +16,4 @@ masker:
       val_h: 255
       val_l: 150
 
-    image_topic: "/routecam"
+    image_topic: "/routecam/image_raw"
