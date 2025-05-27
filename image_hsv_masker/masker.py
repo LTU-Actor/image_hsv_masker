@@ -1,11 +1,10 @@
 import cv2 as cv
 import numpy as np
-
 import rclpy
+from cv_bridge import CvBridge
 from rclpy.node import Node
 from rclpy.parameter_service import SetParametersResult
 from sensor_msgs.msg import Image
-from cv_bridge import CvBridge
 
 
 class Masker(Node):
@@ -73,7 +72,7 @@ class Masker(Node):
         hsv_image = cv.cvtColor(im, cv.COLOR_BGR2HSV)
         white_mask = cv.inRange(hsv_image, white_tcolLower, white_tcolUpper)
         yellow_mask = cv.inRange(hsv_image, yellow_tcolLower, yellow_tcolUpper)
-        yw_mask = cv.bitwise_and(white_mask, yellow_mask)
+        yw_mask = cv.bitwise_or(white_mask, yellow_mask)
         
         self.white_mask_pub.publish(self.bridge.cv2_to_imgmsg(white_mask, "mono8"))
         self.yellow_mask_pub.publish(self.bridge.cv2_to_imgmsg(yellow_mask, "mono8"))
